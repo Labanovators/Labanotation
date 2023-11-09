@@ -1,5 +1,5 @@
 # Labanotation
-
+#minor edit
 To Run:
 ./run.sh
 
