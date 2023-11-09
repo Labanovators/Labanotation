@@ -1,0 +1,43 @@
+
+<html>
+    <head>
+        <title>Labanotation</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f0f0f0;
+                text-align: center;
+            }
+            h1 {
+                color: #333;
+            }
+            p {
+                font-size: 18px;
+            }
+            form {
+                margin-top: 20px;
+            }
+            input[type="file"] {
+                display: block;
+                margin: 0 auto;
+            }
+            input[type="submit"] {
+                margin: 10px auto;
+                background-color: #3498db;
+                color: #fff;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Labanotation Generator</h1>
+        <p>Please provide a photo or video to start Labanotation generation</p>
+
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file">
+            <input type="submit" value="Generate Labanotation">
+        </form>
+    </body>
+</html>
