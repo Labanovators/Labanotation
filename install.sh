@@ -6,3 +6,4 @@ pip install --upgrade pip
 pip install Flask
 pip install opencv-python
 pip install numpy
+pip install mediapipe

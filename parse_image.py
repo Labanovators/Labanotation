@@ -1,14 +1,19 @@
 import cv2 as cv
 import numpy as np
 import argparse
+import mediapipe as mp
+import json
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--input', required=True, help='Path to the input image file')
+parser.add_argument('--input', required=True, help='Path to the input video file or 0 for webcam')
 parser.add_argument('--threshold', default=0.2, type=float)
 parser.add_argument('--width', default=368, type=int)
 parser.add_argument('--height', default=368, type=int)
 
 args = parser.parse_args()
+mp_drawing = mp.solutions.drawing_utils
+mp_pose = mp.solutions.pose
+
 
 BODY_PARTS = { "Nose": 0, "Neck": 1, "RShoulder": 2, "RElbow": 3, "RWrist": 4,
                "LShoulder": 5, "LElbow": 6, "LWrist": 7, "RHip": 8, "RKnee": 9,
@@ -26,46 +31,36 @@ inHeight = args.height
 
 net = cv.dnn.readNetFromTensorflow("graph_opt.pb")
 
-# Load the image from the specified file path
-frame = cv.imread(args.input)
+# Initialize video capture (use '0' for webcam or path to video file)
+cap = cv.VideoCapture(args.input)
 
-frameWidth = frame.shape[1]
-frameHeight = frame.shape[0]
+with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+    while cap.isOpened():
+        ret, frame = cap.read()
 
-net.setInput(cv.dnn.blobFromImage(frame, 1.0, (inWidth, inHeight), (127.5, 127.5, 127.5), swapRB=True, crop=False))
-out = net.forward()
-out = out[:, :19, :, :]  # MobileNet output [1, 57, -1, -1], we only need the first 19 elements
+        #detect pose and render
+        #recolor image to RGB
+        image = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        image.flags.writeable = False
 
-assert(len(BODY_PARTS) == out.shape[1])
+        #making the detection
+        results = pose.process(image)
 
-points = []
-for i in range(len(BODY_PARTS)):
-    # Slice heatmap of corresponding body's part.
-    heatMap = out[0, i, :, :]
+        #recolor back to BGR
+        image.flags.writeable = True
+        image = cv.cvtColor(image, cv.COLOR_RGB2BGR)
 
-    _, conf, _, point = cv.minMaxLoc(heatMap)
-    x = (frameWidth * point[0]) / out.shape[3]
-    y = (frameHeight * point[1]) / out.shape[2]
-    # Add a point if its confidence is higher than the threshold.
-    points.append((int(x), int(y)) if conf > args.threshold else None)
+        #render detections
+        mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+                                  mp_drawing.DrawingSpec(color=(255,0,255), thickness=2, circle_radius=2), 
+                                  mp_drawing.DrawingSpec(color=(255,255,255), thickness=2, circle_radius=2))
 
-for pair in POSE_PAIRS:
-    partFrom = pair[0]
-    partTo = pair[1]
-    assert(partFrom in BODY_PARTS)
-    assert(partTo in BODY_PARTS)
+        #puts a pop up on our screen of what the feed is
+        cv.imshow('Mediapipe Feed', image)
 
-    idFrom = BODY_PARTS[partFrom]
-    idTo = BODY_PARTS[partTo]
+        #check if the window is closed or q is pressed
+        if cv.waitKey(10) & 0xFF == ord('q'):
+            break
 
-    if points[idFrom] and points[idTo]:
-        cv.line(frame, points[idFrom], points[idTo], (0, 255, 0), 3)
-        cv.ellipse(frame, points[idFrom], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-        cv.ellipse(frame, points[idTo], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-
-t, _ = net.getPerfProfile()
-freq = cv.getTickFrequency() / 1000
-cv.putText(frame, '%.2fms' % (t / freq), (10, 20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
-
-cv.imshow('OpenPose using OpenCV', frame)
-cv.waitKey(0)
+cap.release()
+cv.destroyAllWindows()
