@@ -13,6 +13,7 @@ parser.add_argument('--height', default=368, type=int)
 args = parser.parse_args()
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
+landmark_data_list = []
 
 
 BODY_PARTS = { "Nose": 0, "Neck": 1, "RShoulder": 2, "RElbow": 3, "RWrist": 4,
@@ -50,6 +51,20 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
         image.flags.writeable = True
         image = cv.cvtColor(image, cv.COLOR_RGB2BGR)
 
+        #get the landmarks
+        try:
+            landmarks = results.pose_landmarks.landmark
+            frame_landmark_data = {}
+            for landmark, landmark_name in zip(landmarks, mp_pose.PoseLandmark):
+                frame_landmark_data[landmark_name.name] = {
+                    "x": landmark.x,
+                    "y": landmark.y,
+                    "z": landmark.z if landmark.HasField("z") else None,
+                }
+            landmark_data_list.append(frame_landmark_data)
+        except:
+            pass
+
         #render detections
         mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
                                   mp_drawing.DrawingSpec(color=(255,0,255), thickness=2, circle_radius=2), 
@@ -64,3 +79,8 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 
 cap.release()
 cv.destroyAllWindows()
+
+for frame_idx, frame_landmark_data in enumerate(landmark_data_list):
+    print(f"LANDMARKS - Frame {frame_idx}")
+    for landmark_name, landmark_info in frame_landmark_data.items():
+        print(landmark_name, "x:", landmark_info["x"], "y:", landmark_info["y"], "z:", landmark_info["z"])
