@@ -25,6 +25,7 @@ def detect_landmarks(frame, pose):
             "x": landmark.x,
             "y": landmark.y,
             "z": landmark.z if landmark.HasField("z") else None,
+            "v": landmark.visibility,
         }
     return frame_landmark_data, results, image
 
@@ -42,7 +43,7 @@ def analyze_movement(frame_landmark_data, prev_landmarks, frame_counter):
             if abs(dz) > 0.1:
                 movement_direction += "Backward " if dz < 0 else "Forward "
             
-            if movement_direction:
+            if movement_direction and landmark_info["v"] > 0.5:
                 print(f"{landmark_name} movement: {movement_direction}")
 
 def main():
@@ -53,7 +54,8 @@ def main():
 
     net = cv.dnn.readNetFromTensorflow("graph_opt.pb")
 
-    cap = cv.VideoCapture(args.input)
+    file = args.input if args.input != "0" else 0
+    cap = cv.VideoCapture(file)
 
     with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
         prev_landmarks = None
